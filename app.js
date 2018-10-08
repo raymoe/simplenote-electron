@@ -78,7 +78,7 @@
 /*! exports provided: app_id, app_key, wpcc_client_id, wpcc_redirect_url, default */
 /***/ (function(module) {
 
-eval("module.exports = {\"app_id\":\"chalk-bump-f49\",\"app_key\":\"12345\",\"wpcc_client_id\":\"12345\",\"wpcc_redirect_url\":\"https://app.simplenote.com/wpcc\"};//# sourceURL=[module]\n//# sourceMappingURL=data:application/json;charset=utf-8;base64,eyJ2ZXJzaW9uIjozLCJmaWxlIjoiLi4vY29uZmlnLmpzb24uanMiLCJzb3VyY2VzIjpbXSwibWFwcGluZ3MiOiIiLCJzb3VyY2VSb290IjoiIn0=\n//# sourceURL=webpack-internal:///../config.json\n");
+eval("module.exports = {\"app_id\":\"chalk-bump-f49\",\"app_key\":\"12345\",\"wpcc_client_id\":\"0\",\"wpcc_redirect_url\":\"https://simplenote.com\"};//# sourceURL=[module]\n//# sourceMappingURL=data:application/json;charset=utf-8;base64,eyJ2ZXJzaW9uIjozLCJmaWxlIjoiLi4vY29uZmlnLmpzb24uanMiLCJzb3VyY2VzIjpbXSwibWFwcGluZ3MiOiIiLCJzb3VyY2VSb290IjoiIn0=\n//# sourceURL=webpack-internal:///../config.json\n");
 
 /***/ }),
 
