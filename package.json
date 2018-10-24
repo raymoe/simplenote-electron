@@ -15,7 +15,6 @@
     "build": "NODE_ENV=production npm run build:dll && npm run build:app",
     "build:app": "webpack --mode=production --config ./webpack.config.js",
     "build:dll": "webpack --mode=production --config ./webpack.config.dll.js",
-    "electron": "electron .",
     "format": "prettier --write {desktop,lib,sass}/{**/,*}.{js,json,jsx,sass}",
     "lint": "eslint --ext .js --ext .jsx lib",
     "start": "node ./webapp/index.js"
@@ -28,9 +27,6 @@
     "node": ">= 7.9.0",
     "npm": ">= 6.4.0"
   },
-  "browserslist": [
-    "electron >=2"
-  ],
   "jest": {
     "roots": [
       "desktop",
@@ -56,9 +52,6 @@
     "babel-loader": "8.0.0",
     "classnames": "2.2.5",
     "css-loader": "0.28.9",
-    "electron": "2.0.8",
-    "electron-builder": "20.28.2",
-    "electron-packager": "9.1.0",
     "enzyme": "3.5.0",
     "enzyme-adapter-react-16.2": "1.1.0",
     "eslint": "4.18.0",
@@ -89,7 +82,6 @@
     "crypto-random-string": "1.0.0",
     "draft-js": "0.10.5",
     "draft-js-simpledecorator": "1.0.2",
-    "electron-window-state": "4.1.1",
     "express": "4.16.3",
     "highlight.js": "9.12.0",
     "isemail": "3.1.1",
