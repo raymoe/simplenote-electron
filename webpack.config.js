@@ -3,17 +3,22 @@ const webpack = require('webpack');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
 const config = require('./get-config');
 const spawnSync = require('child_process').spawnSync;
+const HardSourceWebpackPlugin = require('hard-source-webpack-plugin');
 
-module.exports = (env, argv) => {
-  const isDevMode = argv.mode === 'development';
+module.exports = () => {
+  const isDevMode = process.env.NODE_ENV === 'development';
 
   return {
     context: __dirname + '/lib',
-    devtool: isDevMode && 'cheap-module-eval-source-map',
+    mode: isDevMode ? 'development' : 'production',
+    devtool:
+      process.env.SOURCEMAP || (isDevMode && 'cheap-module-eval-source-map'),
+    devServer: { inline: true },
     entry: ['./boot'],
     output: {
       path: __dirname + '/dist',
       filename: 'app.js',
+      chunkFilename: '[name].js',
     },
     module: {
       rules: [
@@ -77,10 +82,7 @@ module.exports = (env, argv) => {
       modules: ['node_modules'],
     },
     plugins: [
-      new webpack.DllReferencePlugin({
-        context: process.cwd(),
-        manifest: require(process.cwd() + '/dist/vendor.json'),
-      }),
+      new HardSourceWebpackPlugin(),
       new HtmlWebpackPlugin({
         'build-platform': process.platform,
         'build-reference': spawnSync('git', ['describe', '--always', '--dirty'])
@@ -94,6 +96,7 @@ module.exports = (env, argv) => {
       new webpack.DefinePlugin({
         config: JSON.stringify(config()),
       }),
+      new webpack.IgnorePlugin(/^\.\/locale$/, /moment$/),
     ],
   };
 };

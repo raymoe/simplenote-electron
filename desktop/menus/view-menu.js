@@ -1,89 +1,21 @@
 const { buildRadioGroup, appCommandSender } = require('./utils');
+const platform = require('../platform');
 
 const buildViewMenu = settings => {
   settings = settings || {};
 
-  return {
+  const menu = {
     label: '&View',
     submenu: [
-      {
-        label: '&Note Display',
-        submenu: [
-          {
-            label: '&Comfy',
-            id: 'comfy',
-          },
-          {
-            label: 'C&ondensed',
-            id: 'condensed',
-          },
-          {
-            label: '&Expanded',
-            id: 'expanded',
-          },
-        ].map(
-          buildRadioGroup({
-            action: 'setNoteDisplay',
-            propName: 'noteDisplay',
-            settings,
-          })
-        ),
-      },
-      {
-        label: 'Note &Editor',
-        submenu: [
-          {
-            label: '&Font Size',
-            submenu: [
-              // For the oddity with "Command" vs "Cmd"
-              // Cite: https://github.com/atom/electron/issues/1507
-              {
-                label: '&Bigger',
-                accelerator: 'CommandOrControl+=',
-                click: appCommandSender({ action: 'increaseFontSize' }),
-              },
-              {
-                label: '&Smaller',
-                accelerator: 'CommandOrControl+-',
-                click: appCommandSender({ action: 'decreaseFontSize' }),
-              },
-              {
-                label: '&Reset',
-                accelerator: 'CommandOrControl+0',
-                click: appCommandSender({ action: 'resetFontSize' }),
-              },
-            ],
-          },
-          {
-            label: '&Line Length',
-            submenu: [
-              {
-                label: '&Narrow',
-                id: 'narrow',
-              },
-              {
-                label: '&Full',
-                id: 'full',
-              },
-            ].map(
-              buildRadioGroup({
-                action: 'setLineLength',
-                propName: 'lineLength',
-                settings,
-              })
-            ),
-          },
-        ],
-      },
       {
         label: '&Sort Type',
         submenu: [
           {
-            label: 'Last &modified',
+            label: 'Date &modified',
             id: 'modificationDate',
           },
           {
-            label: 'Last &created',
+            label: 'Date &created',
             id: 'creationDate',
           },
           {
@@ -111,6 +43,48 @@ const buildViewMenu = settings => {
           ]),
       },
       {
+        label: '&Note Display',
+        submenu: [
+          {
+            label: '&Comfy',
+            id: 'comfy',
+          },
+          {
+            label: 'C&ondensed',
+            id: 'condensed',
+          },
+          {
+            label: '&Expanded',
+            id: 'expanded',
+          },
+        ].map(
+          buildRadioGroup({
+            action: 'setNoteDisplay',
+            propName: 'noteDisplay',
+            settings,
+          })
+        ),
+      },
+      {
+        label: '&Line Length',
+        submenu: [
+          {
+            label: '&Narrow',
+            id: 'narrow',
+          },
+          {
+            label: '&Full',
+            id: 'full',
+          },
+        ].map(
+          buildRadioGroup({
+            action: 'setLineLength',
+            propName: 'lineLength',
+            settings,
+          })
+        ),
+      },
+      {
         label: '&Theme',
         submenu: [
           {
@@ -133,13 +107,36 @@ const buildViewMenu = settings => {
         type: 'separator',
       },
       {
-        label: 'T&oggle Full Screen',
-        accelerator: (function() {
-          if (process.platform === 'darwin') {
-            return 'Ctrl+Command+F';
-          }
-          return 'F11';
-        })(),
+        label: 'Zoom &In',
+        accelerator: 'CommandOrControl+=',
+        click: appCommandSender({ action: 'increaseFontSize' }),
+      },
+      {
+        label: 'Zoom &Out',
+        accelerator: 'CommandOrControl+-',
+        click: appCommandSender({ action: 'decreaseFontSize' }),
+      },
+      {
+        label: '&Actual Size',
+        accelerator: 'CommandOrControl+0',
+        click: appCommandSender({ action: 'resetFontSize' }),
+      },
+      {
+        type: 'separator',
+      },
+      {
+        label: 'Focus Mode',
+        accelerator: 'CommandOrControl+Shift+F',
+        type: 'checkbox',
+        checked: settings.focusModeEnabled,
+        click: appCommandSender({ action: 'toggleFocusMode' }),
+      },
+      {
+        type: 'separator',
+      },
+      {
+        label: 'Toggle &Full Screen',
+        accelerator: platform.isOSX() ? 'Ctrl+Command+F' : 'F11',
         click(item, focusedWindow) {
           if (focusedWindow) {
             focusedWindow.setFullScreen(!focusedWindow.isFullScreen());
@@ -148,6 +145,8 @@ const buildViewMenu = settings => {
       },
     ],
   };
+
+  return menu;
 };
 
 module.exports = buildViewMenu;

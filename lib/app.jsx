@@ -2,31 +2,29 @@ import React, { Component } from 'react';
 import PropTypes from 'prop-types';
 import { bindActionCreators } from 'redux';
 import { connect } from 'react-redux';
+import 'focus-visible/dist/focus-visible.js';
 import appState from './flux/app-state';
 import reduxActions from './state/actions';
 import selectors from './state/selectors';
 import browserShell from './browser-shell';
-import { ContextMenu, MenuItem, Separator } from './context-menu';
-import * as Dialogs from './dialogs/index';
 import exportNotes from './utils/export';
 import exportToZip from './utils/export/to-zip';
-import SimplenoteCompactLogo from './icons/simplenote-compact';
 import NoteInfo from './note-info';
 import NoteList from './note-list';
 import NoteEditor from './note-editor';
 import NavigationBar from './navigation-bar';
+import AppLayout from './app-layout';
 import Auth from './auth';
+import DialogRenderer from './dialog-renderer';
+import { activityHooks, nudgeUnsynced } from './utils/sync';
 import analytics from './analytics';
 import classNames from 'classnames';
 import {
-  compact,
-  concat,
-  flowRight,
+  debounce,
   noop,
   get,
   has,
   isObject,
-  map,
   matchesProperty,
   overEvery,
   pick,
@@ -80,6 +78,8 @@ function mapDispatchToProps(dispatch, { noteBucket }) {
         'setNoteDisplay',
         'setMarkdown',
         'setAccountName',
+        'toggleFocusMode',
+        'toggleSpellCheck',
       ]),
       dispatch
     ),
@@ -118,7 +118,9 @@ export const App = connect(mapStateToProps, mapDispatchToProps)(
       settings: PropTypes.object.isRequired,
 
       client: PropTypes.object.isRequired,
+      isSmallScreen: PropTypes.bool.isRequired,
       noteBucket: PropTypes.object.isRequired,
+      preferencesBucket: PropTypes.object.isRequired,
       tagBucket: PropTypes.object.isRequired,
       onAuthenticate: PropTypes.func.isRequired,
       onCreateUser: PropTypes.func.isRequired,
@@ -130,6 +132,10 @@ export const App = connect(mapStateToProps, mapDispatchToProps)(
       onAuthenticate: () => {},
       onCreateUser: () => {},
       onSignOut: () => {},
+    };
+
+    state = {
+      isNoteOpen: false,
     };
 
     componentWillMount() {
@@ -146,24 +152,28 @@ export const App = connect(mapStateToProps, mapDispatchToProps)(
 
       this.props.noteBucket
         .on('index', this.onNotesIndex)
-        .on('update', this.onNoteUpdate)
+        .on('update', debounce(this.onNoteUpdate, 200, { maxWait: 1000 }))
         .on('remove', this.onNoteRemoved);
+
+      this.props.preferencesBucket.on('update', this.onLoadPreferences);
 
       this.props.tagBucket
         .on('index', this.onTagsIndex)
-        .on('update', this.onTagsIndex)
+        .on('update', debounce(this.onTagsIndex, 200))
         .on('remove', this.onTagsIndex);
 
       this.props.client
         .on('authorized', this.onAuthChanged)
-        .on('unauthorized', this.onAuthChanged);
+        .on('unauthorized', this.onAuthChanged)
+        .on('message', this.syncActivityHooks)
+        .on('send', this.syncActivityHooks);
 
-      this.onNotesIndex();
-      this.onTagsIndex();
+      this.onLoadPreferences(() =>
+        // Make sure that tracking starts only after preferences are loaded
+        analytics.tracks.recordEvent('application_opened')
+      );
 
       this.toggleShortcuts(true);
-
-      analytics.tracks.recordEvent('application_opened');
     }
 
     componentWillUnmount() {
@@ -173,15 +183,29 @@ export const App = connect(mapStateToProps, mapDispatchToProps)(
     }
 
     componentDidUpdate(prevProps) {
-      if (this.props.settings !== prevProps.settings) {
-        ipc.send('settingsUpdate', this.props.settings);
+      const { settings, isSmallScreen, appState } = this.props;
+
+      if (settings !== prevProps.settings) {
+        ipc.send('settingsUpdate', settings);
+      }
+
+      // If note has just been loaded
+      if (prevProps.appState.note === undefined && appState.note) {
+        this.setState({ isNoteOpen: true });
+      }
+
+      if (isSmallScreen !== prevProps.isSmallScreen) {
+        this.setState({
+          isNoteOpen: Boolean(!isSmallScreen && appState.note),
+        });
       }
     }
 
     handleShortcut = event => {
       const { ctrlKey, key, metaKey } = event;
 
-      const cmdOrCtrl = ctrlKey || metaKey;
+      // Is either cmd or ctrl pressed? (But not both)
+      const cmdOrCtrl = (ctrlKey || metaKey) && ctrlKey !== metaKey;
 
       // open tag list
       if (cmdOrCtrl && 'T' === key && !this.state.showNavigation) {
@@ -193,7 +217,7 @@ export const App = connect(mapStateToProps, mapDispatchToProps)(
       }
 
       // focus search field
-      if (cmdOrCtrl && 'F' === key) {
+      if (cmdOrCtrl && 'f' === key) {
         this.props.setSearchFocus();
 
         event.stopPropagation();
@@ -260,24 +284,30 @@ export const App = connect(mapStateToProps, mapDispatchToProps)(
 
       setAuthorized();
       analytics.initialize(accountName);
-    };
+      this.onLoadPreferences();
 
-    onNotePrinted = () =>
-      this.props.actions.setShouldPrintNote({ shouldPrint: false });
+      // 'Kick' the app to ensure content is loaded after signing in
+      this.onNotesIndex();
+      this.onTagsIndex();
+    };
 
     onNotesIndex = () =>
       this.props.actions.loadNotes({ noteBucket: this.props.noteBucket });
 
     onNoteRemoved = () => this.onNotesIndex();
 
-    onNoteUpdate = (noteId, data, original, patch, isIndexing) =>
+    onNoteUpdate = (noteId, data, remoteUpdateInfo) =>
       this.props.actions.noteUpdated({
         noteBucket: this.props.noteBucket,
         noteId,
         data,
-        original,
-        patch,
-        isIndexing,
+        remoteUpdateInfo,
+      });
+
+    onLoadPreferences = callback =>
+      this.props.actions.loadPreferences({
+        callback,
+        preferencesBucket: this.props.preferencesBucket,
       });
 
     onTagsIndex = () =>
@@ -294,8 +324,6 @@ export const App = connect(mapStateToProps, mapDispatchToProps)(
       });
     };
 
-    onSetEditorMode = mode => this.props.actions.setEditorMode({ mode });
-
     onUpdateContent = (note, content) =>
       this.props.actions.updateNoteContent({
         noteBucket: this.props.noteBucket,
@@ -311,16 +339,6 @@ export const App = connect(mapStateToProps, mapDispatchToProps)(
         tags,
       });
 
-    onTrashNote = note => {
-      const previousIndex = this.getPreviousNoteIndex(note);
-      this.props.actions.trashNote({
-        noteBucket: this.props.noteBucket,
-        note,
-        previousIndex,
-      });
-      analytics.tracks.recordEvent('editor_note_deleted');
-    };
-
     // gets the index of the note located before the currently selected one
     getPreviousNoteIndex = note => {
       const filteredNotes = filterNotes(this.props.appState);
@@ -332,39 +350,16 @@ export const App = connect(mapStateToProps, mapDispatchToProps)(
       return Math.max(filteredNotes.findIndex(noteIndex) - 1, 0);
     };
 
-    onRestoreNote = note => {
-      const previousIndex = this.getPreviousNoteIndex(note);
-      this.props.actions.restoreNote({
-        noteBucket: this.props.noteBucket,
-        note,
-        previousIndex,
-      });
-      analytics.tracks.recordEvent('editor_note_restored');
-    };
-
-    onShareNote = () =>
-      this.props.actions.showDialog({
-        dialog: {
-          type: 'Share',
-          modal: true,
+    syncActivityHooks = data => {
+      activityHooks(data, {
+        onIdle: () => {
+          nudgeUnsynced({
+            client: this.props.client,
+            noteBucket: this.props.noteBucket,
+            notes: this.props.appState.notes,
+          });
         },
       });
-
-    onDeleteNoteForever = note => {
-      const previousIndex = this.getPreviousNoteIndex(note);
-      this.props.actions.deleteNoteForever({
-        noteBucket: this.props.noteBucket,
-        note,
-        previousIndex,
-      });
-    };
-
-    onRevisions = note => {
-      this.props.actions.noteRevisions({
-        noteBucket: this.props.noteBucket,
-        note,
-      });
-      analytics.tracks.recordEvent('editor_versions_accessed');
     };
 
     toggleShortcuts = doEnable => {
@@ -373,6 +368,12 @@ export const App = connect(mapStateToProps, mapDispatchToProps)(
       } else {
         window.removeEventListener('keydown', this.handleShortcut, true);
       }
+    };
+
+    loadPreferences = () => {
+      this.props.actions.loadPreferences({
+        preferencesBucket: this.props.preferencesBucket,
+      });
     };
 
     render() {
@@ -385,22 +386,16 @@ export const App = connect(mapStateToProps, mapDispatchToProps)(
         tagBucket,
         isSmallScreen,
       } = this.props;
-      const electron = get(this.state, 'electron');
       const isMacApp = isElectronMac();
-      const filteredNotes = filterNotes(state);
-      const hasNotes = filteredNotes.length > 0;
 
-      const selectedNote =
-        state.note || (!isSmallScreen && hasNotes ? filteredNotes[0] : null);
+      const themeClass = `theme-${settings.theme}`;
 
-      const appClasses = classNames('app', `theme-${settings.theme}`, {
+      const appClasses = classNames('app', themeClass, {
         'is-line-length-full': settings.lineLength === 'full',
         'touch-enabled': 'ontouchstart' in document.body,
       });
 
       const mainClasses = classNames('simplenote-app', {
-        'note-open':
-          (isSmallScreen && state.note) || (!isSmallScreen && selectedNote),
         'note-info-open': state.showNoteInfo,
         'navigation-open': state.showNavigation,
         'is-electron': isElectron(),
@@ -409,65 +404,37 @@ export const App = connect(mapStateToProps, mapDispatchToProps)(
 
       return (
         <div className={appClasses}>
-          {isElectron() && (
-            <ContextMenu Menu={electron.Menu} window={electron.currentWindow}>
-              <MenuItem label="Undo" role="undo" />
-              <MenuItem label="Redo" role="redo" />
-              <Separator />
-              <MenuItem label="Cut" role="cut" />
-              <MenuItem label="Copy" role="copy" />
-              <MenuItem label="Paste" role="paste" />
-              <MenuItem label="Select All" role="selectall" />
-            </ContextMenu>
-          )}
           {isAuthorized ? (
             <div className={mainClasses}>
               {state.showNavigation && (
                 <NavigationBar noteBucket={noteBucket} tagBucket={tagBucket} />
               )}
-              <div className="source-list theme-color-bg theme-color-fg">
-                <SearchBar noteBucket={noteBucket} />
-                {hasNotes ? (
+              <AppLayout
+                isFocusMode={settings.focusModeEnabled}
+                isNavigationOpen={state.showNavigation}
+                isNoteOpen={this.state.isNoteOpen}
+                isNoteInfoOpen={state.showNoteInfo}
+                note={state.note}
+                noteBucket={noteBucket}
+                revisions={state.revisions}
+                onNoteClosed={() => this.setState({ isNoteOpen: false })}
+                onUpdateContent={this.onUpdateContent}
+                searchBar={<SearchBar noteBucket={noteBucket} />}
+                noteList={
                   <NoteList
                     noteBucket={noteBucket}
                     isSmallScreen={isSmallScreen}
+                    onNoteOpened={() => this.setState({ isNoteOpen: true })}
                   />
-                ) : (
-                  <div className="placeholder-note-list">
-                    <span>No Notes</span>
-                  </div>
-                )}
-              </div>
-              {selectedNote &&
-                hasNotes && (
+                }
+                noteEditor={
                   <NoteEditor
                     allTags={state.tags}
-                    editorMode={state.editorMode}
                     filter={state.filter}
-                    note={selectedNote}
-                    revisions={state.revisions}
-                    onSetEditorMode={this.onSetEditorMode}
-                    onUpdateContent={this.onUpdateContent}
                     onUpdateNoteTags={this.onUpdateNoteTags}
-                    onTrashNote={this.onTrashNote}
-                    onRestoreNote={this.onRestoreNote}
-                    onShareNote={this.onShareNote}
-                    onDeleteNoteForever={this.onDeleteNoteForever}
-                    onRevisions={this.onRevisions}
-                    onCloseNote={() => this.props.actions.closeNote()}
-                    onNoteInfo={() => this.props.actions.toggleNoteInfo()}
-                    shouldPrint={state.shouldPrint}
-                    onNotePrinted={this.onNotePrinted}
                   />
-                )}
-              {!hasNotes && (
-                <div className="placeholder-note-detail theme-color-border">
-                  <div className="placeholder-note-toolbar theme-color-border" />
-                  <div className="placeholder-note-editor">
-                    <SimplenoteCompactLogo />
-                  </div>
-                </div>
-              )}
+                }
+              />
               {state.showNoteInfo && <NoteInfo noteBucket={noteBucket} />}
             </div>
           ) : (
@@ -481,41 +448,17 @@ export const App = connect(mapStateToProps, mapDispatchToProps)(
               isElectron={isElectron()}
             />
           )}
-          {this.props.appState.dialogs.length > 0 && (
-            <div className="dialogs">{this.renderDialogs()}</div>
-          )}
+          <DialogRenderer
+            appProps={this.props}
+            buckets={{ noteBucket, tagBucket }}
+            themeClass={themeClass}
+            closeDialog={this.props.actions.closeDialog}
+            dialogs={this.props.appState.dialogs}
+            isElectron={isElectron()}
+          />
         </div>
       );
     }
-
-    renderDialogs = () => {
-      const { dialogs } = this.props.appState;
-
-      const makeDialog = (dialog, key) => [
-        dialog.modal && (
-          <div key="overlay" className="dialogs-overlay" onClick={null} />
-        ),
-        this.renderDialog(dialog, key),
-      ];
-
-      return flowRight(compact, concat, map)(dialogs, makeDialog);
-    };
-
-    renderDialog = ({ params, ...dialog }, key) => {
-      const DialogComponent = Dialogs[dialog.type];
-
-      if (DialogComponent === null) {
-        throw new Error('Unknown dialog type.');
-      }
-
-      return (
-        <DialogComponent
-          isElectron={isElectron()}
-          {...this.props}
-          {...{ key, dialog, params }}
-        />
-      );
-    };
   }
 );
 

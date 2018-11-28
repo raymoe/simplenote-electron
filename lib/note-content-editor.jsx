@@ -1,5 +1,4 @@
 import React, { Component } from 'react';
-import ReactDOM from 'react-dom';
 import PropTypes from 'prop-types';
 import { ContentState, Editor, EditorState, Modifier } from 'draft-js';
 import { get, includes, invoke, noop } from 'lodash';
@@ -144,7 +143,9 @@ function continueList(editorState, listItemMatch) {
 export default class NoteContentEditor extends Component {
   static propTypes = {
     content: PropTypes.string.isRequired,
+    filter: PropTypes.string.isRequired,
     onChangeContent: PropTypes.func.isRequired,
+    spellCheckEnabled: PropTypes.bool.isRequired,
     storeFocusEditor: PropTypes.func,
     storeHasFocus: PropTypes.func,
   };
@@ -162,6 +163,8 @@ export default class NoteContentEditor extends Component {
     ),
   };
 
+  editorKey = 0;
+
   componentWillMount() {
     document.addEventListener('copy', this.stripFormattingFromSelectedText);
     document.addEventListener('cut', this.stripFormattingFromSelectedText);
@@ -170,6 +173,17 @@ export default class NoteContentEditor extends Component {
   componentDidMount() {
     this.props.storeFocusEditor(this.focus);
     this.props.storeHasFocus(this.hasFocus);
+  }
+
+  componentDidUpdate(prevProps) {
+    // To immediately reflect the changes to the spell check setting,
+    // we must remount the Editor and force update. The remount is
+    // done by changing the `key` prop on the Editor.
+    // https://stackoverflow.com/questions/35792275/
+    if (prevProps.spellCheckEnabled !== this.props.spellCheckEnabled) {
+      this.editorKey += 1;
+      this.forceUpdate();
+    }
   }
 
   componentWillUnmount() {
@@ -249,21 +263,12 @@ export default class NoteContentEditor extends Component {
   };
 
   /**
-   * This is highly-specific and coupled to the Draft-JS
-   * interface but for now it's what we have to do to
-   * determine if the editor is focused. Should we come
-   * up with a better method to determine if the user is
-   * currently working in the editor/editor area we can
-   * replace this function with that method.
+   * Determine whether the Draft-JS editor is focused.
    *
    * @returns {boolean} whether the editor area is focused
    */
   hasFocus = () => {
-    return (
-      this.editor &&
-      document.activeElement ===
-        get(ReactDOM.findDOMNode(this.editor), 'children[0].children[0]') // eslint-disable-line react/no-find-dom-node
-    );
+    return document.activeElement === get(this.editor, 'editor');
   };
 
   onTab = e => {
@@ -313,8 +318,9 @@ export default class NoteContentEditor extends Component {
   render() {
     return (
       <Editor
+        key={this.editorKey}
         ref={this.saveEditorRef}
-        spellCheck
+        spellCheck={this.props.spellCheckEnabled}
         stripPastedStyles
         onChange={this.handleEditorStateChange}
         editorState={this.state.editorState}

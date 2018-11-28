@@ -20,8 +20,11 @@ export class TagField extends Component {
   static displayName = 'TagField';
 
   static propTypes = {
+    allTags: PropTypes.array.isRequired,
+    note: PropTypes.object.isRequired,
     storeFocusTagField: PropTypes.func,
     storeHasFocus: PropTypes.func,
+    tags: PropTypes.array.isRequired,
     unusedTags: PropTypes.arrayOf(PropTypes.string),
     usedTags: PropTypes.arrayOf(PropTypes.string),
     onUpdateNoteTags: PropTypes.func.isRequired,
@@ -88,10 +91,10 @@ export class TagField extends Component {
     onUpdateNoteTags(differenceBy(tags, [tagName], s => s.toLocaleLowerCase()));
 
     if (selectedTag === tagName) {
-      this.setState({ selectedTag: '' });
+      this.setState({ selectedTag: '' }, () => {
+        invoke(this, 'tagInput.focus');
+      });
     }
-
-    invoke(this, 'tagInput.focus');
 
     analytics.tracks.recordEvent('editor_tag_removed');
   };

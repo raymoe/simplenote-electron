@@ -2,7 +2,9 @@ node_modules/**/*
 desktop-build/
 release/
 *.pvk
+*.p12
 *.spc
 *.tgz
 .idea
 .DS_Store
+dev-app-update.yml

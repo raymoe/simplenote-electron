@@ -1,16 +1,20 @@
 import React, { Component } from 'react';
 import { connect } from 'react-redux';
+import PropTypes from 'prop-types';
 import onClickOutside from 'react-onclickoutside';
+
+import analytics from '../analytics';
+import NavigationBarItem from './item';
 import TagList from '../tag-list';
 import NotesIcon from '../icons/notes';
 import TrashIcon from '../icons/trash';
 import SettingsIcon from '../icons/settings';
 import { viewExternalUrl } from '../utils/url-utils';
-import classNames from 'classnames';
 import appState from '../flux/app-state';
+import DialogTypes from '../../shared/dialog-types';
 
 const {
-  selectAllNotes,
+  showAllNotesAndSelectFirst,
   selectTrash,
   showDialog,
   toggleNavigation,
@@ -19,9 +23,12 @@ const {
 export class NavigationBar extends Component {
   static displayName = 'NavigationBar';
 
+  static propTypes = {
+    selectTrash: PropTypes.func.isRequired,
+  };
+
   static defaultProps = {
-    onSelectAllNotes: function() {},
-    onSelectTrash: function() {},
+    onShowAllNotes: function() {},
   };
 
   // Used by onClickOutside wrapper
@@ -39,63 +46,47 @@ export class NavigationBar extends Component {
 
   onHelpClicked = () => viewExternalUrl('http://simplenote.com/help');
 
+  onSelectTrash = () => {
+    this.props.selectTrash();
+    analytics.tracks.recordEvent('list_trash_viewed');
+  };
+
   // Determine if the selected class should be applied for the 'all notes' or 'trash' rows
-  getNavigationItemClass = isTrashRow => {
+  isSelected = ({ isTrashRow }) => {
     const { showTrash, selectedTag } = this.props;
     const isItemSelected = isTrashRow === showTrash;
 
-    return isItemSelected && !selectedTag
-      ? 'navigation-folders-item-selected'
-      : 'navigation-folders-item';
+    return isItemSelected && !selectedTag;
   };
 
   render() {
     const { noteBucket, tagBucket } = this.props;
-    const classes = classNames('button', 'button-borderless', 'theme-color-fg');
-    const allNotesClasses = classNames(
-      this.getNavigationItemClass(false),
-      classes
-    );
-    const trashClasses = classNames(this.getNavigationItemClass(true), classes);
 
     return (
       <div className="navigation theme-color-bg theme-color-fg theme-color-border">
         <div className="navigation-folders">
-          <button
-            type="button"
-            className={allNotesClasses}
-            onClick={this.props.onSelectAllNotes}
-          >
-            <span className="navigation-icon">
-              <NotesIcon />
-            </span>
-            All Notes
-          </button>
-          <button
-            type="button"
-            className={trashClasses}
-            onClick={this.props.onSelectTrash}
-          >
-            <span className="navigation-icon">
-              <TrashIcon />
-            </span>
-            Trash
-          </button>
+          <NavigationBarItem
+            icon={<NotesIcon />}
+            isSelected={this.isSelected({ isTrashRow: false })}
+            label="All Notes"
+            onClick={this.props.onShowAllNotes}
+          />
+          <NavigationBarItem
+            icon={<TrashIcon />}
+            isSelected={this.isSelected({ isTrashRow: true })}
+            label="Trash"
+            onClick={this.onSelectTrash}
+          />
         </div>
         <div className="navigation-tags theme-color-border">
           <TagList noteBucket={noteBucket} tagBucket={tagBucket} />
         </div>
         <div className="navigation-tools theme-color-border">
-          <button
-            type="button"
-            className="navigation-tools-item button button-borderless theme-color-fg"
+          <NavigationBarItem
+            icon={<SettingsIcon />}
+            label="Settings"
             onClick={this.props.onSettings}
-          >
-            <span className="navigation-icon">
-              <SettingsIcon />
-            </span>
-            Settings
-          </button>
+          />
         </div>
         <div className="navigation-footer">
           <button
@@ -126,29 +117,11 @@ const mapStateToProps = ({ appState: state }) => ({
 });
 
 const mapDispatchToProps = dispatch => ({
-  onAbout: () =>
-    dispatch(
-      showDialog({
-        dialog: {
-          type: 'About',
-          modal: true,
-          single: true,
-        },
-      })
-    ),
+  onAbout: () => dispatch(showDialog({ dialog: DialogTypes.ABOUT })),
   onOutsideClick: () => dispatch(toggleNavigation()),
-  onSelectAllNotes: () => dispatch(selectAllNotes()),
-  onSelectTrash: () => dispatch(selectTrash()),
-  onSettings: () =>
-    dispatch(
-      showDialog({
-        dialog: {
-          type: 'Settings',
-          modal: true,
-          single: true,
-        },
-      })
-    ),
+  onShowAllNotes: () => dispatch(showAllNotesAndSelectFirst()),
+  onSettings: () => dispatch(showDialog({ dialog: DialogTypes.SETTINGS })),
+  selectTrash: () => dispatch(selectTrash()),
 });
 
 export default connect(mapStateToProps, mapDispatchToProps)(
