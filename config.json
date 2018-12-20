@@ -1,7 +1,10 @@
 {
   "app_id": "chalk-bump-f49",
   "app_key": "12345",
-  "wpcc_client_id": "1235",
+  "development": false,
+  "wpcc_client_id": "0",
   "wpcc_redirect_url": "https://simplenote.com",
-  "is_app_engine": "true"
+  "is_app_engine": true,
+  "web_app_url": "https://simplenote.go-vip.co",
+  "app_engine_url": "https://web-dot-simple-note-hrd.appspot.com"
 }
