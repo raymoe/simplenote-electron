@@ -1,131 +1,19 @@
 {
   "name": "simplenote",
   "description": "Simplenote is an easy way to keep notes, lists, ideas and more. Your notes stay in sync with all your devices for free.",
-  "author": {
-    "name": "Automattic, Inc.",
-    "email": "support@simplenote.com"
-  },
-  "productName": "Simplenote",
-  "version": "1.3.0",
-  "main": "desktop/index.js",
+  "version": "1.0.0",
   "license": "GPL-2.0",
-  "homepage": "https://simplenote.com",
   "scripts": {
-    "dev": "make dev",
     "start": "node ./webapp/index.js",
-    "test": "make test",
-    "lint": "make lint",
-    "format": "make format",
-    "build": "make build"
+    "build": "exit 0"
   },
   "repository": {
     "type": "git",
     "url": "git://github.com/Automattic/simplenote-electron.git"
   },
-  "engines": {
-    "node": ">= 7.9.0",
-    "npm": ">= 6.4.0"
-  },
-  "browserslist": [
-    "electron >=2"
-  ],
-  "jest": {
-    "globals": {
-      "config": {
-        "appVersion": "foo"
-      }
-    },
-    "roots": [
-      "desktop",
-      "lib"
-    ],
-    "setupTestFrameworkScriptFile": "<rootDir>setup-tests.js",
-    "testRegex": "(/test/.*\\.jsx?)|(test\\.jsx?)$"
-  },
-  "prettier": {
-    "bracketSpacing": true,
-    "singleQuote": true,
-    "trailingComma": "es5"
-  },
-  "devDependencies": {
-    "@adlk/misty": "^0.1.0",
-    "@babel/core": "7.0.0",
-    "@babel/plugin-proposal-class-properties": "7.0.0",
-    "@babel/plugin-proposal-object-rest-spread": "7.0.0",
-    "@babel/plugin-syntax-dynamic-import": "7.0.0",
-    "@babel/preset-env": "7.0.0",
-    "@babel/preset-react": "7.0.0",
-    "ajv": "6.5.3",
-    "autoprefixer": "7.1.3",
-    "babel-core": "7.0.0-bridge.0",
-    "babel-eslint": "7.2.3",
-    "babel-loader": "8.0.0",
-    "babel-plugin-dynamic-import-node": "2.2.0",
-    "classnames": "2.2.5",
-    "concurrently": "^4.0.1",
-    "css-loader": "0.28.9",
-    "debug": "4.1.0",
-    "enzyme": "3.7.0",
-    "enzyme-adapter-react-16": "1.6.0",
-    "eslint": "4.18.0",
-    "eslint-config-prettier": "2.9.0",
-    "eslint-loader": "2.0.0",
-    "eslint-plugin-jest": "21.12.1",
-    "eslint-plugin-prettier": "2.6.0",
-    "eslint-plugin-react": "7.6.1",
-    "hard-source-webpack-plugin": "0.12.0",
-    "html-webpack-plugin": "3.2.0",
-    "jest": "23.6.0",
-    "node-sass": "4.9.3",
-    "postcss-loader": "2.1.0",
-    "prettier": "1.10.2",
-    "react-onclickoutside": "6.7.1",
-    "react-test-renderer": "16.2.0",
-    "sass-loader": "6.0.6",
-    "style-loader": "0.20.2",
-    "wait-on": "^3.0.1",
-    "webpack": "4.5.0",
-    "webpack-cli": "2.0.14",
-    "webpack-dev-server": "3.1.10"
-  },
   "dependencies": {
-    "@automattic/vip-go": "0.2.0",
-    "@material-ui/core": "3.3.1",
-    "cookie": "0.3.1",
-    "create-hash": "1.1.3",
-    "crypto-random-string": "1.0.0",
-    "draft-js": "0.10.5",
-    "draft-js-simpledecorator": "1.0.2",
-    "express": "4.16.3",
-    "focus-visible": "^4.1.5",
-    "gridicons": "^3.1.1",
-    "highlight.js": "9.12.0",
-    "isemail": "3.1.1",
-    "js-yaml": "^3.12.0",
-    "jszip": "3.1.5",
-    "lodash": "4.17.5",
-    "moment": "2.20.1",
-    "promise": "7.1.1",
-    "prop-types": "15.6.0",
-    "react": "16.6.3",
-    "react-addons-update": "15.6.2",
-    "react-dom": "16.6.3",
-    "react-dropzone": "6.2.4",
-    "react-modal": "3.6.1",
-    "react-overlays": "0.8.3",
-    "react-redux": "5.0.7",
-    "react-transition-group": "2.5.0",
-    "react-virtualized": "9.18.5",
-    "redux": "3.7.2",
-    "redux-localstorage": "0.4.1",
-    "redux-thunk": "2.2.0",
-    "remove-markdown": "^0.3.0",
-    "sanitize-filename": "1.6.1",
-    "sax": "1.2.4",
-    "semver": "^5.5.1",
-    "showdown": "1.8.6",
-    "simperium": "0.3.3",
-    "turndown": "5.0.1",
-    "valid-url": "1.0.9"
+    "@automattic/vip-go": "^0.2.1",
+    "express": "^4.16.4",
+    "newrelic": "^4.12.0"
   }
 }
